@@ -186,6 +186,27 @@ function checkAnswer(q,ans){
   if(q.type==='judge')return normJudge(ans)===normJudge(q.answer);
   return norm(ans)===norm(q.answer);
 }
+/* 识别同一行内的选项："A 6刀 B 5刀 C 4刀" / "A.6刀 B.5刀" */
+function parseInlineOpts(stem){
+  const re=/([A-F])\s*[.、．]?\s*/g;
+  const marks=[];let m;
+  while((m=re.exec(stem))!==null){marks.push({letter:m[1],start:m.index,textStart:re.lastIndex})}
+  /* 只认从 A 开始连续递增的序列，避免误判正文中的字母 */
+  const seq=[];let expect='A';
+  for(const mk of marks){
+    if(mk.letter===expect){seq.push(mk);expect=String.fromCharCode(expect.charCodeAt(0)+1)}
+    else if(mk.letter==='A'){seq.length=0;seq.push(mk);expect='B'}
+  }
+  if(seq.length<2)return null;
+  const opts=[];
+  for(let i=0;i<seq.length;i++){
+    const end=i+1<seq.length?seq[i+1].start:stem.length;
+    const txt=stem.slice(seq[i].textStart,end).trim();
+    if(!txt)return null;
+    opts.push(seq[i].letter+' '+txt);
+  }
+  return {stem:stem.slice(0,seq[0].start).trim(),opts};
+}
 
 /* ================= 登录 ================= */
 let pickedRole='parent';
@@ -369,11 +390,14 @@ function vQuestion(box){
   const prog='第 '+(practice.idx+1)+' / '+practice.queue.length+' 题 ｜ 本次答对 '+practice.right+' 题，得 '+practice.coins+' 🥚';
   let body='';
   if(q.type==='choice'){
-    const opts=q.stem.split('\n').filter(l=>/^\s*[A-F][.、．]/.test(l));
-    const stem=q.stem.split('\n').filter(l=>!/^\s*[A-F][.、．]/.test(l)).join('\n');
+    let opts=q.stem.split('\n').filter(l=>/^\s*[A-F][.、．]/.test(l));
+    let stem=q.stem.split('\n').filter(l=>!/^\s*[A-F][.、．]/.test(l)).join('\n');
+    if(!opts.length){const p=parseInlineOpts(stem);if(p){stem=p.stem;opts=p.opts}}
     body='<div class="q-stem" style="font-size:17px">'+esc(stem)+'</div>'
       +(q.image?'<img class="qimg" src="'+q.image+'">':'')
-      +opts.map(o=>{const letter=o.trim()[0];return '<button class="opt" data-opt="'+letter+'" onclick="answer(\''+letter+'\',this)">'+esc(o.trim())+'</button>'}).join('');
+      +(opts.length
+        ?opts.map(o=>{const letter=o.trim()[0];return '<button class="opt" data-opt="'+letter+'" onclick="answer(\''+letter+'\',this)">'+esc(o.trim())+'</button>'}).join('')
+        :'<div class="row" style="margin-top:10px"><input id="fillAns" placeholder="输入选项字母（如 A）" onkeydown="if(event.key===\'Enter\')answerFill()"><button class="btn-pri" onclick="answerFill()">提交</button></div>');
   }else if(q.type==='judge'){
     body='<div class="q-stem" style="font-size:17px">'+esc(q.stem)+'</div>'+(q.image?'<img class="qimg" src="'+q.image+'">':'')
       +'<button class="opt" onclick="answer(\'对\',this)">✔ 对</button><button class="opt" onclick="answer(\'错\',this)">✘ 错</button>';
