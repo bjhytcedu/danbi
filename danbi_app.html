@@ -134,7 +134,7 @@ const TYPES={choice:'选择题',fill:'填空题',judge:'判断题'};
 let db=null, me=null, curNav='home', curBank='similar', practice=null;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function todayStr(d){d=d||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function todayStr(d){d=(d===undefined||d===null)?new Date():(d instanceof Date?d:new Date(d));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function fmtTime(t){const d=new Date(t);return todayStr(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
